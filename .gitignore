@@ -1,0 +1,11 @@
+challenge_predictions
+test_results
+training
+.project
+.pydevproject
+*.pkl
+*.jpg
+.idea
+__pycache__
+*.dmp
+!model.dmp
