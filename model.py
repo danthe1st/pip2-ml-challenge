@@ -191,7 +191,5 @@ if __name__ == "__main__":
                 unset_keepawake()
         else:
             model = load()
-        if not os.path.exists("test_results"):
-            os.mkdir("test_results")
         print(test(model, test_loader))
         create_example_image(model, test_loader)

@@ -6,7 +6,7 @@ from model import Model, load as load_model
 import torch
 from model import pixels_to_image
 
-SAVE_PREDICTED_IMAGES=True
+SAVE_PREDICTED_IMAGES=False
 
 
 

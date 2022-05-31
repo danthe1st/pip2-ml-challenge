@@ -2,6 +2,7 @@
 
 
 ### Files
+#### Source files
 - `ex4.py` - the solution to exercise 4
 - `loading.py` - takes care of any sort of data loading
   - the main in there is for testing
@@ -16,3 +17,9 @@
 - `prepare_validation.py` loads the validation data, runs the model on that and creates a pickle file in the challenge output format as well as a file with target predictions
 - `scoring.py` the scoring script from the challenge server
 - `make_predictions.py` loads the challenge dataset from a file called `testset.pkl`, runs the model on that and saves the prediction to a file `challenge_predictions.pkl` (in the output format).
+  - The following variables can be used for configuration:
+    - `SAVE_PREDICTED_IMAGES` if set to `True`, saves predicted images to a directory named `challenge_predictions` in order to check whether everything worked
+#### other files and directories
+- `model.dmp` - the trained model
+- `training` - all images used for training should be in that folder
+- `challenge_prediction` - used for debugging in `make_predictions.py`
