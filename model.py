@@ -18,9 +18,18 @@ from loading import create_data_loaders
 
 IPEX = False
 KEEP_AWAKE = False
+ENABLE_TENSORBOARD = True
 
-DO_TRAINING = False
-NUM_EPOCHS = 40
+DO_TRAINING = True
+NUM_EPOCHS = 1
+
+if IPEX:
+    import intel_extension_for_pytorch as ipex
+
+if ENABLE_TENSORBOARD:
+    from torch.utils.tensorboard import SummaryWriter
+
+    writer = SummaryWriter(log_dir=os.path.join("tensorboard", "expiriment_00"))
 
 
 class Model(Module):
@@ -100,15 +109,16 @@ class Model(Module):
 LOG = logging.getLogger(__name__)
 
 
-def train(dataloader: DataLoader) -> Module:
+def train(dataloader: DataLoader,validation_loader: DataLoader) -> Module:
     model = Model(n_inputs=3, n_outputs=3, n_hidden_layers=7, n_hidden_units=20, kernel_size=3)
+    model.train()
     # optimizer = SGD(model.parameters(), lr=0.01)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-5)
     if IPEX:
-        import intel_extension_for_pytorch as ipex
         model, optimizer = ipex.optimize(model, optimizer=optimizer, dtype=torch.float32)
     loss_fn = MSELoss()
     for epoch_id in tqdm(range(NUM_EPOCHS), "Training model", NUM_EPOCHS, position=0):
+        model.train()
         for iteration, data in enumerate(
                 tqdm(dataloader, desc=f"Run epoch {epoch_id}", total=len(dataloader), position=1, leave=False)):
             # 1st dimension-->minibatch
@@ -129,23 +139,32 @@ def train(dataloader: DataLoader) -> Module:
             optimizer.step()
             optimizer.zero_grad()
             # LOG.info(f"loss: {loss.item()}")
+            if ENABLE_TENSORBOARD and iteration % 50 == 0:
+                writer.add_scalar(tag="training/loss", scalar_value=loss.cpu(), global_step=epoch_id*len(dataloader)+iteration)
+                for j, (name, param) in enumerate(model.named_parameters()):
+                    writer.add_histogram(tag=f"training/param{j} ({name})", values=param.cpu(),global_step=epoch_id*len(dataloader)+iteration)
+        if ENABLE_TENSORBOARD:
+            validation_loss=test(model,validation_loader, infotext=f"Validating model after epoch {epoch_id}",position=1, leave=False)
+            writer.add_scalar(tag="validation/loss",scalar_value=validation_loss,global_step=(epoch_id+1)*len(dataloader)-1)
     return model
 
 
-def test(model: Module, test_loader: DataLoader, position=0, leave=True):
-    loss_fn = MSELoss()
-    loss_fn.requires_grad_(False)
-    losses = np.zeros((len(test_loader),))
-    for i, data in tqdm(enumerate(test_loader), desc="Testing model", total=len(test_loader), position=position,
-                        leave=leave):
-        input, known, target, file = data
-        input = input.to(torch.float)
-        known = known.to(torch.float)
-        output = model(input, known)
-        loss = loss_fn(output, target)
-        losses[i] = loss
-    # print(losses)
-    return np.mean(losses)
+def test(model: Module, test_loader: DataLoader, infotext="Testing model", position=0, leave=True):
+    with torch.no_grad():
+        model.eval()
+        loss_fn = MSELoss()
+        loss_fn.requires_grad_(False)
+        losses = np.zeros((len(test_loader),))
+        for i, data in tqdm(enumerate(test_loader), desc=infotext, total=len(test_loader), position=position,
+                            leave=leave):
+            input, known, target, file = data
+            input = input.to(torch.float)
+            known = known.to(torch.float)
+            output = model(input, known)
+            loss = loss_fn(output, target)
+            losses[i] = loss
+        # print(losses)
+        return np.mean(losses)
 
 
 def pixels_to_image(pixels: npt.NDArray, filename):
@@ -180,11 +199,11 @@ if __name__ == "__main__":
                 from wakepy import set_keepawake, unset_keepawake
 
                 try:
-                    model = train(training_loader)
+                    model = train(training_loader, test_loader)
                 finally:
                     set_keepawake(keep_screen_awake=False)
             else:
-                model = train(training_loader)
+                model = train(training_loader, test_loader)
             torch.save(model, "model.dmp")
 
             if KEEP_AWAKE:
@@ -193,3 +212,6 @@ if __name__ == "__main__":
             model = load()
         print(test(model, test_loader))
         create_example_image(model, test_loader)
+
+    if ENABLE_TENSORBOARD:
+        writer.close()
