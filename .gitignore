@@ -12,3 +12,4 @@ __pycache__
 !model.dmp
 tensorboard
 submission_compression.py
+scoring.py

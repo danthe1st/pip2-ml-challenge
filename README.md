@@ -61,7 +61,7 @@ The model scored `23.138` on the challenge server.
 
 ### 2. submission
 
-Commit hash: `to be entered`
+Commit hash: `57a17988af44d3afe55274dbd076bafd01a0392b`
 
 Offsets and spacings were selected randomly.
 No further data augmentation was done for this submission.
