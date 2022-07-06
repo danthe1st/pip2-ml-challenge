@@ -1,5 +1,9 @@
 # ML Challenge
 
+The code and model of my submissions for the ML challenge of the `Programming in Python II` course.
+
+The goal is to complete images where only a fraction of the pixels are present
+
 ### Files
 
 #### Source files
@@ -54,9 +58,9 @@ No data augmentation was done for the first submission.
 - learning rate = 0.01
 - weight decay = 1e-5
 
-#### Challenge Server Score
+#### Final Score
 
-The model scored `23.138` on the challenge server.
+The model scored `23.138` on the challenge server (lower is better).
 
 ### 2. submission
 
@@ -80,6 +84,8 @@ No further data augmentation was done for this submission.
 - help layers: 2, 3
   - help layers are layers where the known inputs are concatenated with the output of the previous layer.
 
-#### Challenge Server Score
+#### Final Score
 
-The model scored `19.915` on the challenge server.
+The model scored `19.915` on the challenge server (lower is better).
+
+The self-calculated mean loss on the normalized validation set was `0.004835741128772497`.
