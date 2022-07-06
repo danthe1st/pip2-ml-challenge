@@ -18,6 +18,7 @@
           named `model.dmp`.
         - `NUM_EPOCHS` the number of epochs to run the algorithm with
           If it is set to `false`, it will only validate the model.
+        - `config` model configuration/hyperparameters
 - `prepare_validation.py` loads the validation data, runs the model on that and creates a pickle file in the challenge
   output format as well as a file with target predictions
 - `scoring.py` the scoring script from the challenge server
@@ -39,6 +40,8 @@
 
 Commit hash: `dc452925594c5838b456a9723844056cd1e6b207`
 
+No data augmentation was done for the first submission.
+
 #### (some) Hyperparameters
 
 - number of epochs = 40
@@ -51,3 +54,33 @@ Commit hash: `dc452925594c5838b456a9723844056cd1e6b207`
 - number of outputs = 3
 - learning rate = 0.01
 - weight decay = 1e-5
+
+#### Challenge Server Score
+
+The model scored `23.138` on the challenge server.
+
+### 2. submission
+
+Commit hash: `to be entered`
+
+Offsets and spacings were selected randomly.
+No further data augmentation was done for this submission.
+
+### (some) hyperparameters
+
+- number of epochs = 10
+- number of workers = 4
+- batch size = 16
+- kernel size = 3
+- number of hidden layers = 7
+- number of hidden units = 20
+- number of inputs = 3
+- number of outputs = 3
+- learning rate = 0.001
+- weight decay = 1e-6
+- help layers: 2, 3
+  - help layers are layers where the known inputs are concatenated with the output of the previous layer.
+
+#### Challenge Server Score
+
+The model scored `19.915` on the challenge server.

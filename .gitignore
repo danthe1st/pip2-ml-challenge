@@ -1,4 +1,6 @@
 challenge_predictions
+challenge_predictions.pkl
+challenge_predictions.pkl.bz2
 test_results
 .project
 .pydevproject
@@ -9,3 +11,4 @@ __pycache__
 *.dmp
 !model.dmp
 tensorboard
+submission_compression.py

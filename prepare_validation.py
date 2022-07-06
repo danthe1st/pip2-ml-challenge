@@ -26,7 +26,6 @@ def save(data, file):
     with open(file, "wb") as fh:
         pkl.dump(data, fh)
 
-
 def run_model(model: Module,
               dataloader: DataLoader[tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[float], str]]):
     actual_result = []

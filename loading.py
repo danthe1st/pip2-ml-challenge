@@ -14,9 +14,14 @@ import colorsys
 from ex4 import ex4 as convert_image
 import dill as pkl
 
+
 # set seeds
-np.random.seed(0)
-torch.random.manual_seed(0)
+def reset_seeds():
+    np.random.seed(0)
+    torch.random.manual_seed(0)
+
+
+reset_seeds()
 
 
 # offset: uniform random between 0 and 8 (both inclusive)
@@ -52,9 +57,8 @@ class TrainingDataset(Dataset[Tuple[npt.NDArray, npt.NDArray, npt.NDArray, str]]
     def __getitem__(self, item):
         num_offsets = 9
         num_spacings = 5
-        offset = (item % num_offsets, (item / num_offsets) % num_offsets)
-        spacing = ((item / (num_offsets * num_offsets)) % num_spacings + 2,
-                   (item / (num_offsets * num_offsets * num_spacings)) % num_spacings + 2)
+        offset = (np.random.randint(0, num_offsets), np.random.randint(0, num_offsets))
+        spacing = (np.random.randint(2, num_spacings + 2), np.random.randint(2, num_spacings + 2))
         file = self.files[item]
         with open(file, "rb") as fh:
             img = Image.open(fh)
@@ -87,20 +91,22 @@ def create_data_loaders():
     training_loader = DataLoader(trainingset,
                                  shuffle=False,
                                  batch_size=16,
-                                 num_workers=8
+                                 num_workers=4
                                  )
     test_loader = DataLoader(testset,
                              shuffle=False,
                              batch_size=16,
-                             num_workers=8
+                             num_workers=4
                              )
     return training_loader, test_loader
+
 
 def create_challenge_data_loader():
     return DataLoader(ChallengeDataset(),
                       shuffle=False,
                       batch_size=16,
-                      num_workers=8)
+                      num_workers=4)
+
 
 if __name__ == "__main__":
     training_loader, test_loader = create_data_loaders()
