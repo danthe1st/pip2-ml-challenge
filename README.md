@@ -21,7 +21,6 @@
         - `config` model configuration/hyperparameters
 - `prepare_validation.py` loads the validation data, runs the model on that and creates a pickle file in the challenge
   output format as well as a file with target predictions
-- `scoring.py` the scoring script from the challenge server
 - `make_predictions.py` loads the challenge dataset from a file called `testset.pkl`, runs the model on that and saves
   the prediction to a file `challenge_predictions.pkl` (in the output format).
     - The following variables can be used for configuration:
