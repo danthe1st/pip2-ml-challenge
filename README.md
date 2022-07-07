@@ -18,7 +18,8 @@ Submissions were evaluated on a separate challenge server with unseen data.
 - `loading.py` - takes care of any sort of data loading
     - the main in there is for testing
     - `COLOR_MODE` the color mode to use for the model
-- `model.py` - contains the model architecture and functions for training/testing the model (as well as saving the model
+- `model.py` - contains the model architecture
+- `training.py` - contains functions for training/testing the model (as well as saving the model
   to an image file)
     - The main in there trains and tests a model
     - The following variables can be used for configuration

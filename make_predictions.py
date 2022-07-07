@@ -2,9 +2,10 @@ import os
 
 from loading import create_challenge_data_loader
 from prepare_validation import save, run_model
-from model import Model, load as load_model
+from model import Model
+from training import load as load_model
 import torch
-from model import pixels_to_image
+from training import pixels_to_image
 
 SAVE_PREDICTED_IMAGES=False
 

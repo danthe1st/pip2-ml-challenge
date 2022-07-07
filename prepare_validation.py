@@ -1,7 +1,8 @@
 import torch
 
 from loading import create_data_loaders, change_image_format, COLOR_MODE
-from model import Model, load as load_model
+from model import Model
+from training import load as load_model
 import numpy as np
 import numpy.typing as npt
 import dill as pkl
