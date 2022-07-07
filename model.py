@@ -14,46 +14,43 @@ from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-from loading import create_data_loaders
+from loading import create_data_loaders, COLOR_MODE
 
 IPEX = False
 KEEP_AWAKE = True
 ENABLE_TENSORBOARD = True
 
 DO_TRAINING = True
-NUM_EPOCHS = 10
+NUM_EPOCHS = 1
 
-MINIFIED_RUN=False # only use a small amount of data (for debugging)
+MINIFIED_RUN = False  # only use a small amount of data (for debugging)
 
-
+start_time = int(time.time())
 config = {
     "lr": 0.001,
     "weight_decay": 1e-6,
     "n_hidden_layers": 7,
     "n_hidden_units": 20,
     "kernel_size": 3,
-    "help_layer_ids":[2,3]
+    "help_layer_ids": [2, 3, 5]
 }
+
+
 def config_to_string(config: dict) -> str:
-    return "__".join(f"{k.replace('_','')}{('_'.join(f'{x}' for x in v)) if isinstance(v,list) else v}" for k, v in config.items())
-#tuning_config = {
-#    "lr": tune.grid_search([0.05, 0.01, 0.001, 0.0001]),
-#    "weight_decay": tune.grid_search([1e-6, 1e-5, 1e-4]),
-#    "n_hidden_layers": 5,
-#    #"n_hidden_layers": tune.grid_search([5, 6, 7, 8]),
-#    "n_hidden_units": 15,
-#    #"n_hidden_units": tune.grid_search([10, 15, 20]),
-#    "kernel_size": 9
-#    #"kernel_size": tune.grid_search([7, 9, 11])
-#}
+    return f"E{NUM_EPOCHS}__" + "__".join(
+        f"{k.replace('_', '')}{('_'.join(f'{x}' for x in v)) if isinstance(v, list) else v}" for k, v in
+        config.items()) + f"__{start_time}"
 
 if IPEX:
     import intel_extension_for_pytorch as ipex
 
+if ENABLE_TENSORBOARD and __name__ != "__main__":
+    ENABLE_TENSORBOARD=False
+
 if ENABLE_TENSORBOARD:
     from torch.utils.tensorboard import SummaryWriter
 
-    writer = SummaryWriter(log_dir=os.path.join("tensorboard", "run_" + config_to_string(config)))
+    writer = SummaryWriter(log_dir=os.path.join("tensorboard", "run_" + config_to_string(config))+"__"+COLOR_MODE)
 if torch.cuda.is_available():
     device_id = "cuda:0"
 elif torch.is_vulkan_available():
@@ -67,10 +64,11 @@ device = torch.device(device_id)
 
 class Model(Module):
 
-    def __init__(self, n_inputs: int, n_outputs: int, n_hidden_layers: int, n_hidden_units: int, kernel_size: int, help_layer_ids=[]):
+    def __init__(self, n_inputs: int, n_outputs: int, n_hidden_layers: int, n_hidden_units: int, kernel_size: int,
+                 help_layer_ids=[]):
         super(Model, self).__init__()
-        n_inputs=n_inputs+3
-        self.help_layer_ids=help_layer_ids
+        n_inputs = n_inputs + 3
+        self.help_layer_ids = help_layer_ids
         # self.input_layer = Conv2d(in_channels=n_inputs, out_channels=n_hidden_units, kernel_size=kernel_size,
         #                          padding=int(kernel_size / 2))
         # self.known_layer = Conv2d(in_channels=n_inputs, out_channels=n_hidden_units, kernel_size=kernel_size,
@@ -78,7 +76,7 @@ class Model(Module):
         hidden_layers = []
         for i in range(n_hidden_layers):
 
-            layer = Conv2d(in_channels=n_inputs+6 if i-1 in help_layer_ids else n_inputs,
+            layer = Conv2d(in_channels=n_inputs,
                            out_channels=n_hidden_units,
                            kernel_size=kernel_size,
                            padding=int(kernel_size / 2))
@@ -87,9 +85,11 @@ class Model(Module):
             hidden_layers.append(layer)
             # hidden_layers.append(ReLU())
             n_inputs = n_hidden_units
+            if i in help_layer_ids:
+                n_inputs = n_inputs + 6
 
         hidden_layers.append(
-            Conv2d(in_channels=n_hidden_units, out_channels=n_outputs, kernel_size=kernel_size,
+            Conv2d(in_channels=n_inputs, out_channels=n_outputs, kernel_size=kernel_size,
                    padding=int(kernel_size / 2)))
         # self.hidden_layers = Sequential(*hidden_layers)
         self.hidden_layers = hidden_layers
@@ -98,10 +98,10 @@ class Model(Module):
             param.requires_grad = True
 
     def forward(self, input: Tensor, known: Tensor):
-        known_reduced=known[:,0,:,:].reshape((known.shape[0],1,known.shape[2],known.shape[3]))
+        known_reduced = known[:, 0, :, :].reshape((known.shape[0], 1, known.shape[2], known.shape[3]))
         known_inverted = -1 * (known - 1)
 
-        x = torch.cat((known,input),dim=1)
+        x = torch.cat((known, input), dim=1)
         for i, layer in enumerate(self.hidden_layers):
             x = layer(x)
             relu_(x)
@@ -117,7 +117,8 @@ LOG = logging.getLogger(__name__)
 
 def train(dataloader: DataLoader, validation_loader: DataLoader, config=config) -> Module:
     model = Model(n_inputs=3, n_outputs=3, n_hidden_layers=config["n_hidden_layers"],
-                  n_hidden_units=config["n_hidden_units"], kernel_size=config["kernel_size"], help_layer_ids=config["help_layer_ids"])
+                  n_hidden_units=config["n_hidden_units"], kernel_size=config["kernel_size"],
+                  help_layer_ids=config["help_layer_ids"])
     model.to(device)
     model.train()
     # optimizer = SGD(model.parameters(), lr=0.01)
@@ -129,7 +130,8 @@ def train(dataloader: DataLoader, validation_loader: DataLoader, config=config) 
         model.train()
         inner_iterator = dataloader
         if not MINIFIED_RUN:
-            inner_iterator = tqdm(dataloader, desc=f"Run epoch {epoch_id}", total=len(dataloader), position=1, leave=False)
+            inner_iterator = tqdm(dataloader, desc=f"Run epoch {epoch_id}", total=len(dataloader), position=1,
+                                  leave=False)
         for iteration, data in enumerate(inner_iterator):
             if MINIFIED_RUN and iteration > 200:
                 break
@@ -171,7 +173,8 @@ def test(model: Module, test_loader: DataLoader, infotext="Testing model", posit
         loss_fn = MSELoss()
         loss_fn.requires_grad_(False)
         losses = np.zeros((51 if MINIFIED_RUN else len(test_loader),))
-        for i, data in tqdm(enumerate(test_loader), desc=infotext, total=len(test_loader), position=position,leave=leave):
+        for i, data in tqdm(enumerate(test_loader), desc=infotext, total=len(test_loader), position=position,
+                            leave=leave):
             if MINIFIED_RUN and i >= 50:
                 break
             input, known, target, file = data
@@ -183,7 +186,6 @@ def test(model: Module, test_loader: DataLoader, infotext="Testing model", posit
             losses[i] = loss
         # print(losses)
         return np.mean(losses)
-
 
 def pixels_to_image(pixels: torch.Tensor, filename):
     im = Image.new("RGB", (100, 100))
@@ -206,6 +208,7 @@ def create_example_image(model: Module, dataloader: DataLoader):
     pixels_to_image((output[0, :, :, :] * 255).to(torch.int), "out.jpg")
     if target is not None:
         pixels_to_image((target[0, :, :, :] * 255).to(torch.int), "target.jpg")
+
 
 def main():
     logging.basicConfig(level=logging.INFO)

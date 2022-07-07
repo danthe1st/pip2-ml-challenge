@@ -4,6 +4,12 @@ The code and model of my submissions for the ML challenge of the `Programming in
 
 The goal is to complete images where only a fraction of the pixels are present
 
+### Available data
+For training this model, 29410 images were used.
+These images should be available in the `training` directory.
+4/5 (23528) of these images were used for training and 1/5 (5882) for validation/tuning.
+Submissions were evaluated on a separate challenge server with unseen data.
+
 ### Files
 
 #### Source files

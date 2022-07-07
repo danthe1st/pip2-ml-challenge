@@ -1,6 +1,6 @@
 import torch
 
-from loading import create_data_loaders
+from loading import create_data_loaders, change_image_format, COLOR_MODE
 from model import Model, load as load_model
 import numpy as np
 import numpy.typing as npt
@@ -13,7 +13,9 @@ from tqdm import tqdm
 
 
 def convert_model_output(model_output: npt.NDArray, known: npt.NDArray):
-    arr = np.array(model_output * 255)
+    arr = np.array(model_output * 255,dtype=int)
+    if COLOR_MODE != "RGB":
+        np.transpose(change_image_format(np.transpose(arr,(1,2,0)),COLOR_MODE,"RGB"), (2, 0, 1))
     known_indices = np.array(np.where(known[0] == 0))
     ret = np.empty((model_output.shape[0], len(known_indices[0])), dtype=np.uint8)
 
