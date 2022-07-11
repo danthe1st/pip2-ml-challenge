@@ -103,7 +103,7 @@ The model scored `19.915` on the challenge server (lower is better).
 The self-calculated mean loss on the normalized validation set was `0.004835741128772497`.
 
 ### 3. submission
-Commit hash: `to be determined`
+Commit hash: `b186c2153c8658a000cecb3a791e042fa7b16bc9`
 
 An ensemble consisting of 10 models has been used for this submission.
 
