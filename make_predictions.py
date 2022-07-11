@@ -4,6 +4,7 @@ from loading import create_challenge_data_loader
 from prepare_validation import save, run_model
 from model import Model
 from training import load as load_model
+import ensemble
 import torch
 from training import pixels_to_image
 
@@ -13,7 +14,8 @@ SAVE_PREDICTED_IMAGES=False
 
 if __name__ == "__main__":
     dataloader = create_challenge_data_loader()
-    model = load_model()
+    #model: Model = load_model()
+    model = ensemble.load_ensemble()
     result, _ = run_model(model, dataloader)
     save(result, "challenge_predictions.pkl")
     if SAVE_PREDICTED_IMAGES:

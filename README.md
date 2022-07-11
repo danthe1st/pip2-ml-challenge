@@ -38,6 +38,10 @@ Submissions were evaluated on a separate challenge server with unseen data.
     - The following variables can be used for configuration:
         - `SAVE_PREDICTED_IMAGES` if set to `True`, saves predicted images to a directory named `challenge_predictions`
           in order to check whether everything worked
+- `ensemble.py` contains code for training an ensemble
+    - The following variables can be used for configuration:
+        - `N_MODELS` the number of models in the ensemble
+    - The final image is calculating using the mean of all values that do not differ more than two standard deviations from the median.
 
 #### other files and directories
 
@@ -97,3 +101,34 @@ No further data augmentation was done for this submission.
 The model scored `19.915` on the challenge server (lower is better).
 
 The self-calculated mean loss on the normalized validation set was `0.004835741128772497`.
+
+### 3. submission
+Commit hash: `to be determined`
+
+An ensemble consisting of 10 models has been used for this submission.
+
+Offsets and spacings were selected randomly.
+No further data augmentation was done for this submission.
+
+## (some) hyperparameters
+
+- number of models in ensemble = 10
+- number of epochs = 10
+- number of workers = 4
+- batch size = 16
+- kernel size = 3
+- number of hidden layers = 7
+- number of hidden units = 20
+- number of inputs = 3
+- number of outputs = 3
+- learning rate = 0.001
+- weight decay = 1e-6
+- help layers: 2, 3, 5
+  - help layers are layers where the known inputs are concatenated with the output of the previous layer.
+- color mode: RGB
+
+#### Final Score
+
+The model scored `17.435` on the challenge server (lower is better).
+
+The self-calculated mean loss on the normalized validation set was `0.0046336506207312255`.

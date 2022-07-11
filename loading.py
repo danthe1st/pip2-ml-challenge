@@ -46,7 +46,11 @@ class ChallengeDataset(Dataset[tuple[npt.NDArray, npt.NDArray, npt.ArrayLike, st
         return len(self.input_arrays)
 
     def __getitem__(self, item: int) -> tuple[npt.NDArray, npt.NDArray, npt.ArrayLike, str]:
-        return change_image_format(self.input_arrays[item], "RGB", COLOR_MODE) / 255, self.known_arrays[item], [], f"{self.sample_ids[item]}.jpg"
+        input_array=self.input_arrays[item]
+        if COLOR_MODE != "RGB":
+            input_array=np.transpose(change_image_format(np.transpose(input_array, (1, 2, 0)), "RGB",COLOR_MODE), (2, 0, 1))
+        input_array=np.array(input_array,dtype=float)
+        return input_array / 255, self.known_arrays[item], [], f"{self.sample_ids[item]}.jpg"
 
 
 class TrainingDataset(Dataset[tuple[npt.NDArray, npt.NDArray, npt.ArrayLike, str]]):

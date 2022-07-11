@@ -5,24 +5,21 @@ import time
 import numpy as np
 import torch
 from PIL import Image, PyAccess
-from torch import Tensor
-from torch.nn import Conv2d
 from torch.nn import MSELoss
 from torch.nn import Module
-from torch.nn.functional import relu_
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
-from model import Model
 
 from loading import create_data_loaders, COLOR_MODE
+from model import Model
 
 IPEX = False
-KEEP_AWAKE = True
+KEEP_AWAKE = False
 ENABLE_TENSORBOARD = True
 
 DO_TRAINING = True
-NUM_EPOCHS = 1
+NUM_EPOCHS = 10
 
 MINIFIED_RUN = False  # only use a small amount of data (for debugging)
 
@@ -42,16 +39,17 @@ def config_to_string(config: dict) -> str:
         f"{k.replace('_', '')}{('_'.join(f'{x}' for x in v)) if isinstance(v, list) else v}" for k, v in
         config.items()) + f"__{start_time}"
 
+
 if IPEX:
     import intel_extension_for_pytorch as ipex
 
 if ENABLE_TENSORBOARD and __name__ != "__main__":
-    ENABLE_TENSORBOARD=False
+    ENABLE_TENSORBOARD = False
 
 if ENABLE_TENSORBOARD:
     from torch.utils.tensorboard import SummaryWriter
 
-    writer = SummaryWriter(log_dir=os.path.join("tensorboard", "run_" + config_to_string(config))+"__"+COLOR_MODE)
+    writer = SummaryWriter(log_dir=os.path.join("tensorboard", "run_" + config_to_string(config)) + "__" + COLOR_MODE)
 if torch.cuda.is_available():
     device_id = "cuda:0"
 elif torch.is_vulkan_available():
@@ -65,7 +63,7 @@ device = torch.device(device_id)
 LOG = logging.getLogger(__name__)
 
 
-def train(dataloader: DataLoader, validation_loader: DataLoader, config=config) -> Module:
+def train(dataloader: DataLoader, validation_loader: DataLoader, config=config, tqdm_position=0) -> Model:
     model = Model(n_inputs=3, n_outputs=3, n_hidden_layers=config["n_hidden_layers"],
                   n_hidden_units=config["n_hidden_units"], kernel_size=config["kernel_size"],
                   help_layer_ids=config["help_layer_ids"])
@@ -76,45 +74,50 @@ def train(dataloader: DataLoader, validation_loader: DataLoader, config=config) 
     if IPEX:
         model, optimizer = ipex.optimize(model, optimizer=optimizer, dtype=torch.float32)
     loss_fn = MSELoss()
-    for epoch_id in tqdm(range(NUM_EPOCHS), "Training model", NUM_EPOCHS, position=0):
-        model.train()
-        inner_iterator = dataloader
-        if not MINIFIED_RUN:
-            inner_iterator = tqdm(dataloader, desc=f"Run epoch {epoch_id}", total=len(dataloader), position=1,
-                                  leave=False)
-        for iteration, data in enumerate(inner_iterator):
-            if MINIFIED_RUN and iteration > 200:
-                break
-            # 1st dimension-->minibatch
-            # 2nd dimension-->color channel
-            # 3rd dimension-->x
-            # 4th dimension-->y
-
-            # file-->array of file names (for debugging)
-            input, known, target, file = data
-            input = input.to(torch.float)
-            input.requires_grad_()
-            known = known.to(torch.float)
-            known.requires_grad_()
-            target = target.to(torch.float)
-            result = model(input, known)
-            loss = loss_fn(result, target)
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad(set_to_none=True)
-            # LOG.info(f"loss: {loss.item()}")
-            if ENABLE_TENSORBOARD and iteration % 50 == 0:
-                writer.add_scalar(tag="training/loss", scalar_value=loss.cpu(),
-                                  global_step=epoch_id * len(dataloader) + iteration)
-                for j, (name, param) in enumerate(model.named_parameters()):
-                    writer.add_histogram(tag=f"training/param{j} ({name})", values=param.cpu(),
-                                         global_step=epoch_id * len(dataloader) + iteration)
-        if ENABLE_TENSORBOARD:
-            validation_loss = test(model, validation_loader, infotext=f"Validating model after epoch {epoch_id}",
-                                   position=1, leave=False)
-            writer.add_scalar(tag="validation/loss", scalar_value=validation_loss,
-                              global_step=(epoch_id + 1) * len(dataloader) - 1)
+    for epoch_id in tqdm(range(NUM_EPOCHS), "Training model", NUM_EPOCHS, position=tqdm_position, leave=True if tqdm_position==0 else False):
+        train_one_epoch(dataloader, validation_loader, epoch_id, loss_fn, model, optimizer, tqdm_position+1)
     return model
+
+
+def train_one_epoch(dataloader: DataLoader, validation_loader: DataLoader, epoch_id: int, loss_fn, model: Module, optimizer: torch.optim.Optimizer, tqdm_position: int):
+    model.train()
+    inner_iterator = dataloader
+    if not MINIFIED_RUN:
+        inner_iterator = tqdm(dataloader, desc=f"Run epoch {epoch_id}", total=len(dataloader),
+                              position=tqdm_position,
+                              leave=False)
+    for iteration, data in enumerate(inner_iterator):
+        if MINIFIED_RUN and iteration > 200:
+            break
+        # 1st dimension-->minibatch
+        # 2nd dimension-->color channel
+        # 3rd dimension-->x
+        # 4th dimension-->y
+
+        # file-->array of file names (for debugging)
+        input, known, target, file = data
+        input = input.to(torch.float)
+        input.requires_grad_()
+        known = known.to(torch.float)
+        known.requires_grad_()
+        target = target.to(torch.float)
+        result = model(input, known)
+        loss = loss_fn(result, target)
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad(set_to_none=True)
+        # LOG.info(f"loss: {loss.item()}")
+        if ENABLE_TENSORBOARD and iteration % 50 == 0:
+            writer.add_scalar(tag="training/loss", scalar_value=loss.cpu(),
+                              global_step=epoch_id * len(dataloader) + iteration)
+            for j, (name, param) in enumerate(model.named_parameters()):
+                writer.add_histogram(tag=f"training/param{j} ({name})", values=param.cpu(),
+                                     global_step=epoch_id * len(dataloader) + iteration)
+    if ENABLE_TENSORBOARD:
+        validation_loss = test(model, validation_loader, infotext=f"Validating model after epoch {epoch_id}",
+                               position=1, leave=False)
+        writer.add_scalar(tag="validation/loss", scalar_value=validation_loss,
+                          global_step=(epoch_id + 1) * len(dataloader) - 1)
 
 
 def test(model: Module, test_loader: DataLoader, infotext="Testing model", position=0, leave=True):
@@ -137,6 +140,7 @@ def test(model: Module, test_loader: DataLoader, infotext="Testing model", posit
         # print(losses)
         return np.mean(losses)
 
+
 def pixels_to_image(pixels: torch.Tensor, filename):
     im = Image.new("RGB", (100, 100))
     pix: PyAccess = im.load()
@@ -146,8 +150,8 @@ def pixels_to_image(pixels: torch.Tensor, filename):
     im.save(filename, "JPEG")
 
 
-def load() -> Module:
-    return torch.load("model.dmp")
+def load() -> Model:
+    return torch.load("model.bkp.dmp")
 
 
 def create_example_image(model: Module, dataloader: DataLoader):
@@ -173,15 +177,13 @@ def main():
                     set_keepawake(keep_screen_awake=True)
                     model = train(training_loader, test_loader)
                 finally:
-                    set_keepawake(keep_screen_awake=False)
+                    unset_keepawake()
             else:
                 model = train(training_loader, test_loader)
-            torch.save(model, "model.dmp")
+            torch.save(model, "model.bkp.dmp")
 
-            if KEEP_AWAKE:
-                unset_keepawake()
         else:
-            model = load()
+            model: Model = load()
         print(test(model, test_loader))
         create_example_image(model, test_loader)
 
